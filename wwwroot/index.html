@@ -6,55 +6,68 @@
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
     <main class="container">
         <header>
-            <h1>ToDo App</h1>
-            <p>Minimal UI wired to your ASP.NET Core ToDo API</p>
+            <h1> ToDo App</h1>
+            <p>Clean UI with full CRUD integration</p>
         </header>
 
+        <!-- FORM -->
         <section class="card">
             <h2>Add / Update Task</h2>
+
             <form id="task-form">
+                <input type="hidden" id="editMode" value="false" />
+
                 <label>
                     Title *
-                    <input id="title" name="title" required />
+                    <input id="title" required />
                 </label>
+
                 <label>
                     Description
-                    <textarea id="description" name="description"></textarea>
+                    <textarea id="description"></textarea>
                 </label>
+
                 <label>
-                    Due Date (YYYY-MM-DD)
-                    <input id="dueDate" name="dueDate" type="date" />
+                    Due Date
+                    <input id="dueDate" type="date" />
                 </label>
+
                 <label>
-                    Due Time (HH:mm or HH:mm:ss)
-                    <input id="dueTime" name="dueTime" type="time" step="1" />
+                    Due Time
+                    <input id="dueTime" type="time" step="1" required />
                 </label>
+
                 <label>
                     Priority
-                    <select id="priority" name="priority">
-                          <option value="Low">Low</option>
-                          <option value="Medium" selected>Medium</option>
-                          <option value="High">High</option>
+                    <select id="priority">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
                     </select>
                 </label>
+
                 <label class="inline">
-                    <input type="checkbox" id="isCompleted" name="isCompleted" />
+                    <input type="checkbox" id="isCompleted" />
                     Completed
                 </label>
+
                 <div class="actions">
-                    <button type="submit">Save (POST for new / PUT for existing)</button>
+                    <button type="submit" id="submitBtn">Save Task</button>
                     <button type="button" id="clear-btn" class="secondary">Clear</button>
                 </div>
             </form>
         </section>
 
+        <!-- TASK LIST -->
         <section class="card">
             <div class="card-header">
                 <h2>Tasks</h2>
                 <button id="refresh-btn" class="secondary">Refresh</button>
             </div>
+
             <div id="tasks"></div>
         </section>
     </main>
@@ -66,6 +79,7 @@
                 <div class="task-meta"></div>
                 <div class="task-desc"></div>
             </div>
+
             <div class="task-actions">
                 <button class="edit-btn">Edit</button>
                 <button class="delete-btn danger">Delete</button>

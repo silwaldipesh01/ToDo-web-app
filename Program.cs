@@ -1,4 +1,9 @@
 using System.Text.Json.Serialization;
+using ToDo_App.Data.Context;
+using Microsoft.EntityFrameworkCore;
+using ToDo_App.Services.Interfaces;
+using ToDo_App.Services;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +20,13 @@ builder.Services.AddControllers()
     {
         opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+builder.Services.AddDbContext<ToDoAppDbContext>(options =>
+{
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("ToDoWebAppDbConntection")
+    );
+});
+builder.Services.AddTransient<IToDoAppServices, ToDoAppServices>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

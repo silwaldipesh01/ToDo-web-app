@@ -1,4 +1,6 @@
-﻿namespace ToDo_App.Model
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ToDo_App.Model
 {
     public enum Priority
     {
@@ -8,6 +10,7 @@
     }
     public class ToDoTask
     {
+        [Key]
         public int TaskId { get; set; }
         public string? TaskTitle { get; set; }
         public string? TaskDescription { get; set; }
