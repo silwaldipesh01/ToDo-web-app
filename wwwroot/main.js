@@ -1,4 +1,4 @@
-﻿const API = "https://localhost:7167/api/ToDo";
+﻿const API = "/api/ToDo";
 
 const form = document.getElementById("task-form");
 const tasksDiv = document.getElementById("tasks");
