@@ -23,7 +23,7 @@ builder.Services.AddControllers()
 builder.Services.AddDbContext<ToDoAppDbContext>(options =>
 {
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("ToDoWebAppDbConntection")
+        builder.Configuration.GetConnectionString("ToDoWebAppDbConnection")
     );
 });
 builder.Services.AddTransient<IToDoAppServices, ToDoAppServices>();
