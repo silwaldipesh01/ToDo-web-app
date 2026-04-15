@@ -5,13 +5,10 @@ namespace ToDo_App.Services.Interfaces
 {
     public interface IToDoAppServices
     {
-        // Define service methods for ToDoApp 
-
-        public List<ToDoTaskDTO> GetAllToDoTasks();
-        public ToDoTaskDTO GetToDoTaskById(int id);
-         
-        public void CreateToDoTask(ToDoTaskDTO task);
-        public void UpdateToDoTask(int id, ToDoTaskDTO task);
-        public void DeleteToDoTask(int id);
+        List<ToDoTaskDTO> GetAllToDoTasks();
+        ToDoTaskDTO GetToDoTaskById(int id);
+        ToDoTaskDTO CreateToDoTask(ToDoTaskDTO task);
+        ToDoTaskDTO UpdateToDoTask(int id, ToDoTaskDTO task);
+        bool DeleteToDoTask(int id);
     }
 }

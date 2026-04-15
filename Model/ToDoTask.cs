@@ -19,11 +19,10 @@ namespace ToDo_App.Model
         public string DueTime { get; set; }
         public Priority TaskPriority { get; set; }
 
-        public static int count = 0;
+        public int UserId { get; set; }
 
-        public ToDoTask() { 
-            TaskId = count++;
-        }
-
+        [Required]
+        public User User { get; set; }
+        
     }
 }

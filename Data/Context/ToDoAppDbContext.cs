@@ -10,5 +10,6 @@ namespace ToDo_App.Data.Context
         {
         }
         public DbSet<ToDoTask> ToDoTasks { get; set; }
+        public DbSet<User> Users { get; set; }
     }
 }

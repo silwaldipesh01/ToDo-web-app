@@ -1,128 +1,95 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ToDo_App.Model;
+using Microsoft.AspNetCore.SignalR;
+using ToDo_App.Hubs;
 using ToDo_App.Model.DTO;
-using ToDo_App.Repository;
+using ToDo_App.Services.Interfaces;
 
 namespace ToDo_App.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
-    public class ToDoController :ControllerBase
+    public class ToDoController : ControllerBase
     {
-        [HttpGet]
-      
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status204NoContent, Type = typeof(ToDoTask))]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<ToDoTaskDTO>> GetTasks() {
+        private readonly IToDoAppServices _todoService;
+        
 
-            var tds = new List<ToDoTaskDTO>();
-
-            foreach (var todos in ToDoRepository.Takses)
-            {
-                ToDoTaskDTO T = new ToDoTaskDTO()
-                {
-                    TaskTitle = todos.TaskTitle,
-                    TaskDescription = todos.TaskDescription,
-                    TaskDueDate = todos.TaskDueDate,
-                    DueTime = todos.DueTime,
-                    TaskIsCompleted = todos.TaskIsCompleted,
-                    TaskPriority = todos.TaskPriority,
-                };
-                tds.Add(T);
-            }
-
-            return Ok(tds);
+        public ToDoController(IToDoAppServices todoService)
+        {
+            _todoService = todoService;
+          
         }
 
-        [HttpGet("{id}")]
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public ActionResult<List<ToDoTaskDTO>> GetTasks()
+        {
+            var tasks = _todoService.GetAllToDoTasks();
+            return Ok(tasks);
+        }
+
+        [HttpGet("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<ToDoTaskDTO> GetTaskById(int id)
         {
-            // Implementation to fetch a single task
-            return Ok(new ToDoTaskDTO());
-        }
-
-        [HttpGet("{title:alpha}")]
-        public ActionResult GetTaskByTitle(string title)
-        {
-            var task = ToDoRepository.Takses.FirstOrDefault(t => t.TaskTitle == title);
-            if (task == null) return NotFound();
+            var task = _todoService.GetToDoTaskById(id);
+            if (task == null) return NotFound($"Task with ID {id} not found.");
 
             return Ok(task);
         }
 
-
-        [HttpPost("{title}",Name ="Dipesh")]
+        [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult AddTasks(string title, [FromBody] ToDoTaskDTO? todos)
+        public ActionResult<ToDoTaskDTO> AddTasks([FromBody] ToDoTaskDTO? todoDto)
         {
-            if (todos == null) return BadRequest("Empty Body");
-            if (!TimeOnly.TryParse(todos.DueTime, out TimeOnly validatedTime))
+            if (todoDto == null) return BadRequest("Task data is required.");
+
+            if (!TimeOnly.TryParse(todoDto.DueTime, out _))
             {
                 return BadRequest("Invalid Time format. Please use HH:mm or HH:mm:ss");
             }
-            ToDoTask T = new ToDoTask()
-            {
-                TaskTitle = todos.TaskTitle,
-                TaskDescription = todos.TaskDescription,
-                TaskDueDate = todos.TaskDueDate,
-                DueTime =validatedTime.ToString(),
-                TaskIsCompleted = todos.TaskIsCompleted,
-                TaskPriority = todos.TaskPriority,
-            };
-            ToDoRepository.Takses.Add(T);
 
-            return CreatedAtAction(nameof(GetTaskByTitle), new { title = todos.TaskTitle }, todos);
+            var createdTask = _todoService.CreateToDoTask(todoDto);
 
+            // Returns 201 Created with the location of the new resource and the created DTO
+            return CreatedAtAction(nameof(GetTaskById), new { id = createdTask.TaskTitle }, createdTask);
         }
 
-        [HttpDelete("{title}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent,Type = typeof(ToDoTaskDTO))]
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult DeleteByTitle(string title){
-            var taskToDelete = ToDoRepository.Takses.FirstOrDefault(t => t.TaskTitle?.ToLower() == title.ToLower());
-            if (taskToDelete == null)
-            {
-                return NotFound($"No task found with the title: {title}");
-            }
-            ToDoRepository.Takses.Remove(taskToDelete);
-
-            return NoContent();
-
-        }
-
-        [HttpPut("{title}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent, Type = typeof(ToDoTaskDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult UpdateTasks(string title, [FromBody] ToDoTaskDTO todos)
+        public ActionResult<ToDoTaskDTO> UpdateTasks(int id, [FromBody] ToDoTaskDTO todoDto)
         {
-            
-            var existingTask = ToDoRepository.Takses.FirstOrDefault(t => t.TaskTitle == title);
-
-            if (!TimeOnly.TryParse(todos.DueTime, out TimeOnly validatedTime))
+            if (!TimeOnly.TryParse(todoDto.DueTime, out _))
             {
-                return BadRequest("Invalid Time format. Please use HH:mm or HH:mm:ss");
+                return BadRequest("Invalid Time format.");
             }
 
-            if (existingTask == null) return NotFound("Task not found");
+            var updatedTask = _todoService.UpdateToDoTask(id, todoDto);
 
-           
-            existingTask.TaskTitle = todos.TaskTitle;
-            existingTask.TaskDescription = todos.TaskDescription;
-            existingTask.TaskIsCompleted = todos.TaskIsCompleted;
-            existingTask.TaskDueDate = todos.TaskDueDate;
-            existingTask.TaskPriority = todos.TaskPriority;
-            existingTask.DueTime = validatedTime.ToString();
+            if (updatedTask == null)
+            {
+                return NotFound($"Task with ID {id} not found.");
+            }
 
-
-
-         
-            return NoContent();
+            return Ok(updatedTask);
         }
 
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult DeleteTask(int id)
+        {
+            var wasDeleted = _todoService.DeleteToDoTask(id);
 
+            if (!wasDeleted)
+            {
+                return NotFound($"Task with ID {id} not found.");
+            }
+
+            return NoContent();
+        }
     }
 }
