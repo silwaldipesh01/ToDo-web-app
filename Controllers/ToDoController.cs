@@ -53,7 +53,7 @@ namespace ToDo_App.Controllers
             var createdTask = _todoService.CreateToDoTask(todoDto);
 
             // Returns 201 Created with the location of the new resource and the created DTO
-            return CreatedAtAction(nameof(GetTaskById), new { id = createdTask.TaskTitle }, createdTask);
+            return Ok(createdTask);
         }
 
         [HttpPut("{id:int}")]
@@ -84,10 +84,10 @@ namespace ToDo_App.Controllers
         {
             var wasDeleted = _todoService.DeleteToDoTask(id);
 
-            if (!wasDeleted)
-            {
-                return NotFound($"Task with ID {id} not found.");
-            }
+            //if (!wasDeleted)
+            //{
+            //    return NotFound($"Task with ID {id} not found.");
+            //}
 
             return NoContent();
         }

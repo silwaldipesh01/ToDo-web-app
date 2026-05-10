@@ -51,7 +51,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000") // change for production
+        policy.WithOrigins("http://localhost:5500","http://127.0.0.1:5500") // change for production
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -138,6 +138,8 @@ if (app.Environment.IsDevelopment())
 
 // HTTPS redirection
 app.UseHttpsRedirection();
+
+app.UseRouting();
 
 // CORS
 app.UseCors("AllowFrontend");

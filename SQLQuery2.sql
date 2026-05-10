@@ -1,0 +1,1 @@
+﻿update Users set PasswordHash ='$2a$11$k4cHy5xTmZHZ6Sf0paHJfel9fjWHdnkN4LMfGM80G/GhprPvDxjvW' where UserId = 1

@@ -12,8 +12,8 @@ using ToDo_App.Data.Context;
 namespace ToDo_App.Migrations
 {
     [DbContext(typeof(ToDoAppDbContext))]
-    [Migration("20260414104816_UserClassAdded")]
-    partial class UserClassAdded
+    [Migration("20260416160148_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

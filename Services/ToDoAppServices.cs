@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using ToDo_App.Data.Context;
 using ToDo_App.Hubs;
 using ToDo_App.Model;
@@ -12,34 +13,36 @@ namespace ToDo_App.Services
     {
         private readonly ToDoAppDbContext _todoAppDbContext;
         private readonly IHubContext<TodoHub> _hub;
-        //private readonly ILogger<ToDoAppServices> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public ToDoAppServices(ToDoAppDbContext DbContext, IHubContext<TodoHub> hub, IHttpContextAccessor contextAccessor)
+
+        public ToDoAppServices(
+            ToDoAppDbContext DbContext,
+            IHubContext<TodoHub> hub,
+            IHttpContextAccessor contextAccessor)
         {
             _todoAppDbContext = DbContext;
             _hub = hub;
-           
             _httpContextAccessor = contextAccessor;
         }
-        private int CurrentUserId => _httpContextAccessor.HttpContext?.User?.GetUserId() ?? 0;
 
-        // Helper method to map Entity to DTO to avoid code repetition
+        private int CurrentUserId => _httpContextAccessor.HttpContext?.User?.GetUserId() ?? 0;
 
         public List<ToDoTaskDTO> GetAllToDoTasks()
         {
             return _todoAppDbContext.ToDoTasks
-             //   .Where(task => task.UserId == CurrentUserId)
                 .Select(task => MapToDTO(task))
                 .ToList();
         }
 
         public ToDoTaskDTO GetToDoTaskById(int id)
         {
-            var task = _todoAppDbContext.ToDoTasks.FirstOrDefault(t => t.TaskId == id && t.UserId == CurrentUserId);
+            var task = _todoAppDbContext.ToDoTasks
+                .FirstOrDefault(t => t.TaskId == id && t.UserId == CurrentUserId);
+
             return task == null ? null : MapToDTO(task);
         }
 
-        public ToDoTaskDTO CreateToDoTask(ToDoTaskDTO taskDto)
+        public async Task<ToDoTaskDTO> CreateToDoTask(ToDoTaskDTO taskDto)
         {
             var newTask = new ToDoTask
             {
@@ -53,16 +56,22 @@ namespace ToDo_App.Services
             };
 
             _todoAppDbContext.ToDoTasks.Add(newTask);
-            _todoAppDbContext.SaveChanges();
+            await _todoAppDbContext.SaveChangesAsync();
 
-            return MapToDTO(newTask);
+            var dto = MapToDTO(newTask);
+
+            await _hub.Clients.All.SendAsync("TaskCreated", dto);
+
+            return dto;
         }
 
-        public ToDoTaskDTO UpdateToDoTask(int id, ToDoTaskDTO taskDto)
+        public async Task<ToDoTaskDTO> UpdateToDoTask(int id, ToDoTaskDTO taskDto)
         {
-            var existingTask = _todoAppDbContext.ToDoTasks.FirstOrDefault(t => t.TaskId == id);
+            var existingTask = await _todoAppDbContext.ToDoTasks
+                .FirstOrDefaultAsync(t => t.TaskId == id && t.UserId == CurrentUserId);
 
-            if (existingTask == null) return null;
+            if (existingTask == null)
+                return null;
 
             existingTask.TaskTitle = taskDto.TaskTitle;
             existingTask.TaskDescription = taskDto.TaskDescription;
@@ -71,23 +80,32 @@ namespace ToDo_App.Services
             existingTask.TaskIsCompleted = taskDto.TaskIsCompleted;
             existingTask.TaskPriority = taskDto.TaskPriority;
 
-            _todoAppDbContext.SaveChanges();
+            await _todoAppDbContext.SaveChangesAsync();
 
-            return MapToDTO(existingTask);
+            var dto = MapToDTO(existingTask);
+
+            await _hub.Clients.All.SendAsync("TaskUpdated", dto);
+
+            return dto;
         }
 
-        public bool DeleteToDoTask(int id)
+        public async Task<bool> DeleteToDoTask(int id)
         {
-            var taskToDelete = _todoAppDbContext.ToDoTasks.FirstOrDefault(t => t.TaskId == id);
+            var taskToDelete = await _todoAppDbContext.ToDoTasks
+                .FirstOrDefaultAsync(t => t.TaskId == id && t.UserId == CurrentUserId);
 
-            if (taskToDelete == null) return false;
+            if (taskToDelete == null)
+                return false;
 
             _todoAppDbContext.ToDoTasks.Remove(taskToDelete);
-            _todoAppDbContext.SaveChanges();
+            await _todoAppDbContext.SaveChangesAsync();
+
+            await _hub.Clients.All.SendAsync("TaskDeleted", id);
 
             return true;
         }
-        private ToDoTaskDTO MapToDTO(ToDoTask task)
+
+        private static ToDoTaskDTO MapToDTO(ToDoTask task)
         {
             return new ToDoTaskDTO
             {

@@ -7,9 +7,8 @@ using ToDo_App.Services.Interfaces;
 
 namespace ToDo_App.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("ToDo/[controller]")]
     [ApiController]
-    [Authorize]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -28,6 +27,7 @@ namespace ToDo_App.Controllers
 
                 var token = _authService.GenerateJwtToken(user);
                 return Ok(new { token });
+               // return Ok(new {message="login sucessfull"});
             }
 
             return Unauthorized("Invalid credentials");

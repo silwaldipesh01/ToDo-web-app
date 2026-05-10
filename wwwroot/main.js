@@ -1,32 +1,77 @@
 ﻿const API = "/api/ToDo";
 
+// ---------- DOM ----------
 const form = document.getElementById("task-form");
 const tasksDiv = document.getElementById("tasks");
 const tpl = document.getElementById("task-row");
 const submitBtn = document.getElementById("submitBtn");
+const refreshBtn = document.getElementById("refresh-btn");
+const clearBtn = document.getElementById("clear-btn");
 
+// ---------- STATE ----------
 let editMode = false;
 let currentTitle = "";
 
-// ================= LOAD =================
+// ---------- SIGNALR ----------
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/todoHub")
+    .withAutomaticReconnect()
+    .build();
+
+// When any user creates a task
+connection.on("TaskCreated", () => {
+    loadTasks();
+});
+
+// When any user updates a task
+connection.on("TaskUpdated", () => {
+    loadTasks();
+});
+
+// When any user deletes a task
+connection.on("TaskDeleted", () => {
+    loadTasks();
+});
+
+// Optional: if you want to see status in console
+connection.onreconnecting(() => {
+    console.log("SignalR reconnecting...");
+});
+
+connection.onreconnected(() => {
+    console.log("SignalR reconnected");
+});
+
+connection.onclose(() => {
+    console.log("SignalR disconnected");
+});
+
+// ---------- LOAD ----------
 async function loadTasks() {
     tasksDiv.innerHTML = "⏳ Loading...";
 
     try {
         const res = await fetch(`${API}/GetTasks`);
+
         if (res.status === 204) {
             tasksDiv.innerHTML = "No tasks found.";
+            return;
+        }
+
+        if (!res.ok) {
+            tasksDiv.innerHTML = "Error loading tasks";
             return;
         }
 
         const data = await res.json();
         renderTasks(data);
     } catch (err) {
+        console.error(err);
         tasksDiv.innerHTML = "Error loading tasks";
     }
 }
 
-// ================= RENDER =================
+// ---------- RENDER ----------
 function renderTasks(tasks) {
     tasksDiv.innerHTML = "";
 
@@ -39,6 +84,9 @@ function renderTasks(tasks) {
         if (t.taskIsCompleted) {
             title.style.textDecoration = "line-through";
             title.style.color = "gray";
+        } else {
+            title.style.textDecoration = "none";
+            title.style.color = "";
         }
 
         const priorityColor =
@@ -49,7 +97,7 @@ function renderTasks(tasks) {
             `Due: ${t.taskDueDate || "N/A"} ${t.dueTime || ""} 
              • <span style="color:${priorityColor}">${t.taskPriority}</span>`;
 
-        node.querySelector(".task-desc").textContent = t.taskDescription;
+        node.querySelector(".task-desc").textContent = t.taskDescription || "";
 
         node.querySelector(".edit-btn").onclick = () => fillForm(t);
         node.querySelector(".delete-btn").onclick = () => deleteTask(t.taskTitle);
@@ -58,20 +106,20 @@ function renderTasks(tasks) {
     });
 }
 
-// ================= FORM =================
+// ---------- FORM ----------
 function fillForm(t) {
     editMode = true;
     currentTitle = t.taskTitle;
 
-    form.title.value = t.taskTitle;
-    form.description.value = t.taskDescription;
-    form.dueDate.value = t.taskDueDate;
-    form.dueTime.value = t.dueTime;
-    form.priority.value = t.taskPriority;
-    form.isCompleted.checked = t.taskIsCompleted;
+    form.title.value = t.taskTitle || "";
+    form.description.value = t.taskDescription || "";
+    form.dueDate.value = t.taskDueDate || "";
+    form.dueTime.value = t.dueTime || "";
+    form.priority.value = t.taskPriority || "Low";
+    form.isCompleted.checked = !!t.taskIsCompleted;
 }
 
-// ================= SAVE =================
+// ---------- SAVE ----------
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -88,49 +136,77 @@ form.addEventListener("submit", async (e) => {
     submitBtn.textContent = "Saving...";
 
     try {
+        let res;
+
         if (!editMode) {
-            await fetch(`${API}/AddTasks/${payload.taskTitle}`, {
+            res = await fetch(`${API}/AddTasks/${encodeURIComponent(payload.taskTitle)}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
         } else {
-            await fetch(`${API}/UpdateTasks/${currentTitle}`, {
+            res = await fetch(`${API}/UpdateTasks/${encodeURIComponent(currentTitle)}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
         }
 
-        clearForm();
-        loadTasks();
-    } catch {
-        alert("Error saving task");
-    }
+        if (!res.ok) {
+            throw new Error("Save failed");
+        }
 
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Save Task";
+        clearForm();
+        await loadTasks();
+    } catch (err) {
+        console.error(err);
+        alert("Error saving task");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save Task";
+    }
 });
 
-// ================= DELETE =================
+// ---------- DELETE ----------
 async function deleteTask(title) {
     if (!confirm("Delete this task?")) return;
 
-    await fetch(`${API}/DeleteByTitle/${title}`, {
-        method: "DELETE"
-    });
+    try {
+        const res = await fetch(`${API}/DeleteByTitle/${encodeURIComponent(title)}`, {
+            method: "DELETE"
+        });
 
-    loadTasks();
+        if (!res.ok) {
+            throw new Error("Delete failed");
+        }
+
+        await loadTasks();
+    } catch (err) {
+        console.error(err);
+        alert("Error deleting task");
+    }
 }
 
-// ================= CLEAR =================
+// ---------- CLEAR ----------
 function clearForm() {
     form.reset();
     editMode = false;
+    currentTitle = "";
 }
 
-// ================= INIT =================
-document.getElementById("refresh-btn").onclick = loadTasks;
-document.getElementById("clear-btn").onclick = clearForm;
+// ---------- INIT ----------
+refreshBtn.onclick = loadTasks;
+clearBtn.onclick = clearForm;
+
+async function startSignalR() {
+    try {
+        await connection.start();
+        console.log("SignalR connected");
+    } catch (err) {
+        console.error("SignalR connection failed:", err);
+        setTimeout(startSignalR, 2000);
+    }
+}
 
 loadTasks();
+startSignalR();
